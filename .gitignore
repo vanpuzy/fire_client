@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Build / Cache
+dist/
+.cache/
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store

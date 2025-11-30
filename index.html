@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>FCM Web Login Demo</title>
+</head>
+<body>
+  <h1>FCM Web Login Demo</h1>
+
+  <p>Open console to see the FCM token and login response.</p>
+
+  <!-- Optional: form input for login -->
+  <div>
+    <input type="text" id="user_id" placeholder="User ID" value="12345678">
+    <input type="password" id="user_pw" placeholder="Password" value="123456">
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-messaging.js";
+
+    // --------------------------
+    // 1️⃣ Firebase config
+    // --------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0d2CsXN69UChoEjFWFuLRl4fB_5j8Q00",
+      authDomain: "hpnrttest.firebaseapp.com",
+      projectId: "hpnrttest",
+      storageBucket: "hpnrttest.firebasestorage.app",
+      messagingSenderId: "861126703238",
+      appId: "1:861126703238:web:b720f5a01a8b2da8403907",
+      measurementId: "G-4RWX77NRJM"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    // --------------------------
+    // 2️⃣ Register Service Worker
+    // --------------------------
+    async function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+          console.log('Service Worker registered with scope:', registration.scope);
+          return registration;
+        } catch (err) {
+          console.error('Service Worker registration failed:', err);
+        }
+      } else {
+        console.warn("Service Workers not supported in this browser.");
+      }
+    }
+
+    // --------------------------
+    // 3️⃣ Get FCM Token
+    // --------------------------
+    async function getFCMToken(registration) {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.warn("Notification permission denied.");
+          return null;
+        }
+        const currentToken = await getToken(messaging, {
+          vapidKey: "BDV6fCkOAxshaLqWueSr8AkmlV9yft2DeMkNp8b-oulQemsqvLpWm6hQvm_KXhM32h7xDD_SRoLYif4xs_26iHY",
+          serviceWorkerRegistration: registration
+        });
+        if (currentToken) {
+          console.log("FCM Token:", currentToken);
+          return currentToken;
+        } else {
+          console.warn("No registration token available.");
+          return null;
+        }
+      } catch (err) {
+        console.error("Error retrieving token:", err);
+        return null;
+      }
+    }
+
+    // --------------------------
+    // 4️⃣ Handle login + send FCM token
+    // --------------------------
+    async function loginAndUpdateFCM() {
+      const user_id = document.getElementById("user_id").value;
+      const user_pw = document.getElementById("user_pw").value;
+
+      const registration = await registerServiceWorker();
+      const fcmToken = await getFCMToken(registration);
+      console.log("Using FCM Token for login:", fcmToken);
+
+      const payload = {
+        user_id,
+        user_pw,
+        fcm_token: fcmToken,
+        platform: "web"
+      };
+
+      try {
+        const response = await fetch("https://techprolead.duckdns.org/maintenance_users/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        console.log("Login response:", data);
+
+        // Optional: save access token
+        if (data.access_token) {
+          localStorage.setItem("access_token", data.access_token);
+        }
+      } catch (err) {
+        console.error("Login request failed:", err);
+      }
+    }
+
+    // --------------------------
+    // 5️⃣ Foreground message listener
+    // --------------------------
+    onMessage(messaging, (payload) => {
+      console.log("Foreground message received:", payload);
+      alert(`Message: ${payload.notification?.title || ""} - ${payload.notification?.body || ""}`);
+    });
+
+    // --------------------------
+    // 6️⃣ Attach login button
+    // --------------------------
+    document.getElementById("loginBtn").addEventListener("click", loginAndUpdateFCM);
+  </script>
+</body>
+</html>
